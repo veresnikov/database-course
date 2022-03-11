@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+
+DATABASE="$1"
+TYPE="$2"
+
+files=$(find "$DATABASE" -name "*-$TYPE.sql" | wc -l)
+# shellcheck disable=SC2044
+for (( i=1; i <= "$files"; i++ ))
+do
+  file=$(find "$DATABASE" -name "$i-*-$TYPE.sql")
+  echo run "$file"
+  ERROR=$(mysql < "$file" 2>&1)
+  if [ "$ERROR" != "" ]; then
+      echo "$ERROR"
+      break
+  fi
+done
