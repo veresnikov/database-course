@@ -93,20 +93,35 @@ from room_category
          inner join room_in_booking on room.id_room = room_in_booking.id_room
          inner join hotel on room.id_hotel = hotel.id_hotel
 where hotel.name = 'Космос'
-  and room_in_booking.checkin_date < '2019-03-23'
-  and room_in_booking.checkout_date >= '2019-03-23'
+  and room_in_booking.checkin_date <= '2019-03-23'
+  and room_in_booking.checkout_date > '2019-03-23'
 group by room_category.name;
 
--- 6) Продлить на 2 дня дату проживания в гостинице “Космос” всем клиентам комнат категории “Бизнес”, которые заселились 10 мая.
+-- 6) Дать список последних проживавщих клиентов по всем команатам гостиницы "Космос", выехавшим в апреле с указанием даты выезда
+select room_in_booking.id_room from room_in_booking
+inner join room on room_in_booking.id_room = room.id_room
+inner join hotel on room.id_hotel = hotel.id_hotel AND hotel.name = 'Космос'
+group by room_in_booking.id_room;
+
+-- 7) Продлить на 2 дня дату проживания в гостинице “Космос” всем клиентам комнат категории “Бизнес”, которые заселились 10 мая.
 update room_in_booking
     inner join room on room_in_booking.id_room = room.id_room
     inner join room_category on room.id_room_category = room_category.id_room_category
     inner join hotel on room.id_hotel = hotel.id_hotel
 set checkout_date = adddate(checkout_date, 2)
-where checkin_date = '2021-05-10'
+where checkin_date = '2019-05-10'
   and room_category.name = 'Бизнес'
   and hotel.name = 'Космос';
 
+select checkout_date, checkin_date from room_in_booking
+    inner join room on room_in_booking.id_room = room.id_room
+    inner join room_category on room.id_room_category = room_category.id_room_category
+    inner join hotel on room.id_hotel = hotel.id_hotel
+where checkin_date = '2019-05-10'
+  and room_category.name = 'Бизнес'
+  and hotel.name = 'Космос';
+
+-- Найти все "пересекающиеся" варианты проживания.
 select *
 from room_in_booking AS left_room_in_booking
          INNER JOIN room_in_booking AS right_room_in_booking
@@ -116,9 +131,10 @@ WHERE left_room_in_booking.id_room_in_booking != right_room_in_booking.id_room_i
   AND left_room_in_booking.checkout_date >= right_room_in_booking.checkout_date;
 
 -- тот же самы запрос, но более явно видно конфликтующие даты
-select left_room_in_booking.id_room_in_booking,
+select left_room_in_booking.id_room,
        left_room_in_booking.checkin_date,
        left_room_in_booking.checkout_date,
+       right_room_in_booking.id_room,
        right_room_in_booking.checkin_date,
        right_room_in_booking.checkout_date
 from room_in_booking AS left_room_in_booking
@@ -131,30 +147,31 @@ WHERE left_room_in_booking.id_room_in_booking != right_room_in_booking.id_room_i
 
 -- 8) Создать бронирование в транзакции
 start transaction;
-    insert into booking(id_client, booking_date)
-    values (15, date(now()));
-    insert into room_in_booking(id_booking, id_room, checkin_date, checkout_date)
-    values (last_insert_id(), 1, adddate(date(now()), 5), adddate(date(now()), 10));
+insert into booking(id_client, booking_date)
+values (15, date(now()));
+insert into room_in_booking(id_booking, id_room, checkin_date, checkout_date)
+values (last_insert_id(), 1, adddate(date(now()), 5), adddate(date(now()), 10));
 commit;
 
 -- 9) добавление индексов
-create index client_name_idx on client(id_client);
+create index client_name_idx on client (id_client);
 
-create index room_category_id_idx on room_category(id_room_category);
+create index room_category_id_idx on room_category (id_room_category);
 
-create index hotel_id_idx on hotel(id_hotel);
-create index hotel_stars_idx on hotel(stars);
+create index hotel_id_idx on hotel (id_hotel);
+create index hotel_name_idx on hotel (name);
+create index hotel_stars_idx on hotel (stars);
 
-create index room_id_idx on room(id_room);
-create index room_number_idx on room(number);
-create index room_price_idx on room(price);
-create index room_hotel_idx on room(id_hotel);
-create index room_category_idx on room(id_room_category);
+create index room_id_idx on room (id_room);
+create index room_number_idx on room (number);
+create index room_price_idx on room (price);
+create index room_hotel_idx on room (id_hotel);
+create index room_category_idx on room (id_room_category);
 
-create index booking_id_idx on booking(id_booking);
-create index booking_client_idx on booking(id_client);
-create index booking_date_idx on booking(booking_date);
+create index booking_id_idx on booking (id_booking);
+create index booking_client_idx on booking (id_client);
+create index booking_date_idx on booking (booking_date);
 
-create index room_in_booking_id_idx on room_in_booking(id_room_in_booking);
-create index room_in_booking_id_booking_idx on room_in_booking(id_booking);
-create index room_in_booking_id_room_idx on room_in_booking(id_room);
+create index room_in_booking_id_idx on room_in_booking (id_room_in_booking);
+create index room_in_booking_id_booking_idx on room_in_booking (id_booking);
+create index room_in_booking_id_room_idx on room_in_booking (id_room);
